@@ -55,6 +55,11 @@ const CHAT_WIRE_API_DOCS_NOTE: &str =
     "`wire_api = \"chat\"` selects the OpenAI Chat Completions protocol (`/v1/chat/completions`).";
 pub const LEGACY_OLLAMA_CHAT_PROVIDER_ID: &str = "ollama-chat";
 pub const OLLAMA_CHAT_PROVIDER_REMOVED_ERROR: &str = "`ollama-chat` is no longer supported.\nHow to fix: replace `ollama-chat` with `ollama` in `model_provider`, `oss_provider`, or `--local-provider`.\nMore info: https://github.com/openai/codex/discussions/7782";
+const ANTHROPIC_PROVIDER_NAME: &str = "Anthropic";
+pub const ANTHROPIC_PROVIDER_ID: &str = "anthropic";
+pub const ANTHROPIC_DEFAULT_BASE_URL: &str = "https://api.anthropic.com";
+pub const ANTHROPIC_API_KEY_ENV_VAR: &str = "ANTHROPIC_API_KEY";
+pub const ANTHROPIC_DEFAULT_MODEL_ID: &str = "claude-sonnet-4-5";
 
 /// Wire protocol that the provider speaks.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, JsonSchema)]
@@ -463,6 +468,45 @@ impl ModelProviderInfo {
         provider
     }
 
+    /// Built-in Anthropic provider. Targets the Anthropic Messages API at
+    /// `https://api.anthropic.com/v1/messages` and reads its bearer token from
+    /// the `ANTHROPIC_API_KEY` environment variable. The user can override
+    /// `base_url`, `env_key`, `api_key`, or individual model entries in
+    /// `~/.codex/config.toml` under `model_providers.anthropic` without
+    /// having to redefine the wire protocol.
+    pub fn create_anthropic_provider() -> ModelProviderInfo {
+        ModelProviderInfo {
+            name: ANTHROPIC_PROVIDER_NAME.into(),
+            base_url: Some(ANTHROPIC_DEFAULT_BASE_URL.to_string()),
+            env_key: Some(ANTHROPIC_API_KEY_ENV_VAR.to_string()),
+            env_key_instructions: Some(
+                "Set the `ANTHROPIC_API_KEY` environment variable to your Anthropic API key."
+                    .to_string(),
+            ),
+            api_key: None,
+            experimental_bearer_token: None,
+            auth: None,
+            aws: None,
+            wire_api: WireApi::AnthropicMessages,
+            model_display_name: Some("Claude".to_string()),
+            models: Some(vec![ModelEntry {
+                id: ANTHROPIC_DEFAULT_MODEL_ID.to_string(),
+                display_name: Some("Claude Sonnet 4.5".to_string()),
+                wire_api: Some(WireApi::AnthropicMessages),
+            }]),
+            query_params: None,
+            http_headers: None,
+            env_http_headers: None,
+            request_max_retries: None,
+            stream_max_retries: None,
+            stream_idle_timeout_ms: None,
+            websocket_connect_timeout_ms: None,
+            requires_openai_auth: false,
+            supports_websockets: false,
+            supports_standalone_web_search: false,
+        }
+    }
+
     pub fn is_openai(&self) -> bool {
         self.name == OPENAI_PROVIDER_NAME
     }
@@ -486,6 +530,14 @@ impl ModelProviderInfo {
         self.name == AMAZON_BEDROCK_RUNTIME_PROVIDER_NAME
     }
 
+    /// True when this provider speaks the Anthropic Messages wire protocol.
+    /// Returns `true` for the built-in `anthropic` provider as well as any
+    /// user-defined provider that explicitly selects `WireApi::AnthropicMessages`
+    /// or the `anthropic_messages`/`anthropic`/`messages` TOML alias.
+    pub fn is_anthropic(&self) -> bool {
+        matches!(self.wire_api, WireApi::AnthropicMessages)
+    }
+
     pub fn has_command_auth(&self) -> bool {
         self.auth.is_some()
     }
@@ -506,6 +558,7 @@ pub fn built_in_model_providers(
     let amazon_bedrock_provider = P::create_amazon_bedrock_provider(/*aws*/ None);
     let amazon_bedrock_runtime_provider =
         P::create_amazon_bedrock_runtime_provider(/*aws*/ None);
+    let anthropic_provider = P::create_anthropic_provider();
 
     // We do not want to be in the business of adjucating which third-party
     // providers are bundled with Codex CLI, so we only include the OpenAI and
@@ -518,6 +571,7 @@ pub fn built_in_model_providers(
             AMAZON_BEDROCK_RUNTIME_PROVIDER_ID,
             amazon_bedrock_runtime_provider,
         ),
+        (ANTHROPIC_PROVIDER_ID, anthropic_provider),
         (
             OLLAMA_OSS_PROVIDER_ID,
             create_oss_provider(DEFAULT_OLLAMA_PORT, WireApi::Responses),

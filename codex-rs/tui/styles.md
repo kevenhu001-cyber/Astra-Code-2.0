@@ -4,9 +4,19 @@
 - **Primary text:** Default.
 - **Secondary text:** Use `dim`.
 
+# Brand palette: black, white, orange
+
+Astra Code's brand surface is intentionally a three-color palette. TUI widgets should compose everything from these three colors plus the terminal's default background:
+
+- **Black** is the terminal's default background. We rely on the terminal's default background instead of painting our own; only call sites that need a contrast surface (overlays, banners) may add a custom background.
+- **White** is the default foreground. Most content text (assistant messages, user input echoes, neutral chrome) should use the default foreground, so it inherits whatever white/light-grey the user's terminal ships with.
+- **Orange** (`255, 165, 0` on dark backgrounds, `180, 90, 0` on light backgrounds) is the Astra accent. See `theme::accent_style_for` for the canonical helper.
+
+Whenever you reach for a new color, prefer one of these three before introducing anything else.
+
 # Foreground colors
 
-- **Default:** Most of the time, just use the default foreground color. `reset` can help get it back.
+- **Default:** Most of the time, just use the default foreground color (white). `reset` can help get it back.
 - **User input tips, selection, and status indicators:** Use ANSI `cyan`.
 - **Success and additions:** Use ANSI `green`.
 - **Errors, failures and deletions:** Use ANSI `red`.

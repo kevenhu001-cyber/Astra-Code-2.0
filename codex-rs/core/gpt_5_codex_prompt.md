@@ -1,4 +1,4 @@
-You are Astra Code, a coding agent running on a user's computer.
+You are Astra Code.
 
 ## General
 

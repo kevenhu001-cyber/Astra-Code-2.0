@@ -1,9 +1,19 @@
 //! Astra Code brand palette.
 //!
 //! Centralizes the brand colors used across the TUI so individual widgets do
-//! not need to hardcode RGB values. Brand accent is orange; semantic colors
-//! (success/error/links) are delegated to ANSI names so terminal themes keep
-//! working as documented in `tui/styles.md`.
+//! not need to hardcode RGB values. The brand surface is intentionally a
+//! three-color palette:
+//!
+//! - **Black** — terminal default background. We rely on the terminal's
+//!   background rather than painting our own, so call sites should normally
+//!   keep `Style::default()` for backgrounds.
+//! - **White** — terminal default foreground, exposed as [`DEFAULT_FG`] for
+//!   the rare cases that need to override the foreground explicitly (e.g.
+//!   text drawn over a colored overlay background).
+//! - **Orange** — Astra brand accent, exposed as [`ACCENT`] and helpers
+//!   [`accent_style`] / [`accent_style_for`]. Semantic colors (success,
+//!   error, links, etc.) still delegate to ANSI names so terminal themes
+//!   keep working as documented in `tui/styles.md`.
 
 use ratatui::style::Color;
 use ratatui::style::Style;

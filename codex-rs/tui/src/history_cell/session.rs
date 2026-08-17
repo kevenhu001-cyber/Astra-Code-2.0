@@ -3,6 +3,8 @@
 use super::*;
 use crate::line_truncation::line_width;
 use crate::line_truncation::truncate_line_with_ellipsis_if_overflow;
+use crate::pixel_art::astra_wordmark_lines_for;
+use crate::terminal_palette::default_bg;
 use crate::width::display_width;
 
 pub(crate) const SESSION_HEADER_MAX_INNER_WIDTH: usize = 56; // Just an eyeballed value
@@ -317,13 +319,13 @@ impl HistoryCell for SessionHeaderHistoryCell {
 
         let make_row = |spans: Vec<Span<'static>>| Line::from(spans);
 
-        // Title line rendered inside the box: ">_ OpenAI Codex (vX)"
-        let title_spans: Vec<Span<'static>> = vec![
-            Span::from(">_ ").dim(),
-            Span::from("OpenAI Codex").bold(),
-            Span::from(" ").dim(),
-            Span::from(format!("(v{})", self.version)).dim(),
-        ];
+        // Pixel-art "ASTRA" wordmark replaces the previous ">_ OpenAI Codex" title.
+        let wordmark_lines = astra_wordmark_lines_for(default_bg());
+
+        // Subtitle line: Astra Code version label, default foreground.
+        let subtitle_spans: Vec<Span<'static>> =
+            vec![Span::from(format!("Astra Code v{}", self.version))];
+        let subtitle = Line::from(subtitle_spans);
 
         const CHANGE_MODEL_HINT_COMMAND: &str = "/model";
         const CHANGE_MODEL_HINT_EXPLANATION: &str = " to change";
@@ -367,12 +369,13 @@ impl HistoryCell for SessionHeaderHistoryCell {
         let dir = self.format_directory(Some(dir_max_width));
         let dir_spans = vec![Span::from(dir_prefix).dim(), Span::from(dir)];
 
-        let mut lines = vec![
-            make_row(title_spans),
-            make_row(Vec::new()),
-            make_row(model_spans),
-            make_row(dir_spans),
-        ];
+        let mut lines: Vec<Line<'static>> = Vec::new();
+        lines.extend(wordmark_lines);
+        lines.push(make_row(Vec::new()));
+        lines.push(subtitle);
+        lines.push(make_row(Vec::new()));
+        lines.push(make_row(model_spans));
+        lines.push(make_row(dir_spans));
 
         if self.yolo_mode {
             let permissions_label = format!("{PERMISSIONS_LABEL:<label_width$}");
@@ -391,7 +394,7 @@ impl HistoryCell for SessionHeaderHistoryCell {
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
         let mut lines = vec![
-            Line::from(format!("OpenAI Codex (v{})", self.version)),
+            Line::from(format!("Astra Code (v{})", self.version)),
             Line::from(format!(
                 "model: {}{}",
                 self.model,

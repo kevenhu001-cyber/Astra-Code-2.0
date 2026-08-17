@@ -269,6 +269,7 @@ fn test_create_amazon_bedrock_provider() {
             base_url: None,
             env_key: None,
             env_key_instructions: None,
+            api_key: None,
             experimental_bearer_token: None,
             auth: None,
             aws: Some(ModelProviderAwsAuthInfo {
@@ -276,6 +277,8 @@ fn test_create_amazon_bedrock_provider() {
                 region: None,
             }),
             wire_api: WireApi::Responses,
+            model_display_name: None,
+            models: None,
             query_params: None,
             http_headers: Some(maplit::hashmap! {
                 AMAZON_BEDROCK_MANTLE_CLIENT_AGENT_HEADER.to_string() =>
@@ -378,6 +381,37 @@ fn test_built_in_model_providers_include_amazon_bedrock_endpoints() {
         .collect::<Vec<_>>(),
         vec![Some(true), Some(true)]
     );
+}
+
+#[test]
+fn test_built_in_model_providers_include_anthropic_endpoint() {
+    let providers = built_in_model_providers(/*openai_base_url*/ None);
+
+    let anthropic = providers
+        .get(ANTHROPIC_PROVIDER_ID)
+        .expect("Anthropic provider should be built in");
+
+    assert_eq!(anthropic.name, ANTHROPIC_PROVIDER_NAME);
+    assert_eq!(anthropic.wire_api, WireApi::AnthropicMessages);
+    assert_eq!(
+        anthropic.env_key.as_deref(),
+        Some(ANTHROPIC_API_KEY_ENV_VAR)
+    );
+    assert_eq!(
+        anthropic.base_url.as_deref(),
+        Some(ANTHROPIC_DEFAULT_BASE_URL)
+    );
+    assert!(anthropic.is_anthropic());
+    assert!(!anthropic.requires_openai_auth);
+    assert!(!anthropic.supports_websockets);
+    assert!(!anthropic.supports_standalone_web_search);
+
+    let default_model = anthropic
+        .models
+        .as_ref()
+        .and_then(|models| models.iter().find(|m| m.id == ANTHROPIC_DEFAULT_MODEL_ID))
+        .expect("built-in Anthropic provider should expose a default model");
+    assert_eq!(default_model.wire_api, Some(WireApi::AnthropicMessages));
 }
 
 #[test]
