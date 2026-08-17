@@ -30,7 +30,7 @@ impl MentionType {
 
     pub(super) fn span(self, base_style: Style) -> Span<'static> {
         let style = match self {
-            Self::Plugin => base_style.magenta(),
+            Self::Plugin => base_style.fg(ratatui::style::Color::Rgb(255, 165, 0)),
             Self::Skill => base_style.dim(),
             Self::File => base_style.cyan(),
             Self::Directory => base_style,

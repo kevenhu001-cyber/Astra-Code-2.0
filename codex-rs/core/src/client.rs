@@ -31,8 +31,12 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 
 use codex_api::AgentIdentityTelemetry;
+use codex_api::AnthropicClient;
+use codex_api::AnthropicOptions;
 use codex_api::ApiError;
 use codex_api::AuthProvider;
+use codex_api::ChatClient;
+use codex_api::ChatOptions;
 use codex_api::CompactClient as ApiCompactClient;
 use codex_api::CompactionInput as ApiCompactionInput;
 use codex_api::Compression;
@@ -56,6 +60,7 @@ use codex_api::ResponsesWebsocketConnection as ApiWebSocketConnection;
 use codex_api::ResponsesWsRequest;
 use codex_api::SharedAuthProvider;
 use codex_api::SseTelemetry;
+use codex_api::StaticHeaderAuthProvider;
 use codex_api::StreamOptions;
 use codex_api::TransportError;
 use codex_api::WebsocketTelemetry;
@@ -163,6 +168,8 @@ const RESPONSES_COMPACT_ENDPOINT: &str = "/responses/compact";
 // `/responses/compact` is unary, so the timeout covers the full response rather than one idle
 // period between stream events.
 const COMPACT_REQUEST_TIMEOUT_IDLE_MULTIPLIER: u32 = 4;
+const CHAT_COMPLETIONS_ENDPOINT: &str = "/chat/completions";
+const ANTHROPIC_MESSAGES_ENDPOINT: &str = "/messages";
 const MEMORIES_SUMMARIZE_ENDPOINT: &str = "/memories/trace_summarize";
 #[cfg(test)]
 pub(crate) const WEBSOCKET_CONNECT_TIMEOUT: Duration =
@@ -1556,6 +1563,141 @@ impl ModelClientSession {
         }
     }
 
+    /// Streams a turn via the OpenAI Chat Completions API.
+    #[instrument(
+        name = "model_client.stream_chat_api",
+        level = "info",
+        skip_all,
+        fields(
+            model = %model_info.slug,
+            wire_api = %self.client.state.provider.info().wire_api,
+            transport = "chat_http",
+        )
+    )]
+    async fn stream_chat_api(
+        &self,
+        prompt: &Prompt,
+        model_info: &ModelInfo,
+        session_telemetry: &SessionTelemetry,
+        inference_trace: &InferenceTraceContext,
+    ) -> Result<ResponseStream> {
+        let client_setup = self.client.current_client_setup().await?;
+        let transport = self
+            .client
+            .build_api_transport(&client_setup.api_provider, CHAT_COMPLETIONS_ENDPOINT)?;
+        let request_auth_context = AuthRequestTelemetryContext::new(
+            client_setup.auth.as_ref().map(CodexAuth::auth_mode),
+            client_setup.api_auth.as_ref(),
+            client_setup.agent_identity_telemetry.clone(),
+            PendingUnauthorizedRetry::default(),
+        );
+        let (request_telemetry, sse_telemetry) = Self::build_streaming_telemetry(
+            session_telemetry,
+            request_auth_context,
+            RequestRouteTelemetry::for_endpoint(CHAT_COMPLETIONS_ENDPOINT),
+            self.client.state.auth_env_telemetry.clone(),
+        );
+        let request =
+            crate::tools::adapters::chat::build_chat_request(prompt, &model_info.slug)?;
+        let client = ChatClient::new(
+            transport,
+            client_setup.api_provider,
+            client_setup.api_auth,
+        )
+        .with_telemetry(Some(request_telemetry), Some(sse_telemetry));
+        let stream = client
+            .stream_request(request, ChatOptions::default())
+            .await
+            .map_err(|error| self.client.state.provider.map_api_error(error))?;
+        let tool_index = crate::tools::adapters::WireToolIndex::new(&prompt.tools);
+        let stream = stream.map(move |event| {
+            event.map(|event| crate::tools::adapters::normalize_response_event(event, &tool_index))
+        });
+        let (stream, _) = map_response_events(
+            None,
+            stream,
+            session_telemetry.clone(),
+            inference_trace.start_attempt(),
+            Arc::clone(&self.client.state.provider),
+        );
+        Ok(stream)
+    }
+
+    /// Streams a turn via the Anthropic Messages API.
+    #[instrument(
+        name = "model_client.stream_anthropic_api",
+        level = "info",
+        skip_all,
+        fields(
+            model = %model_info.slug,
+            wire_api = %self.client.state.provider.info().wire_api,
+            transport = "anthropic_http",
+        )
+    )]
+    async fn stream_anthropic_api(
+        &self,
+        prompt: &Prompt,
+        model_info: &ModelInfo,
+        session_telemetry: &SessionTelemetry,
+        inference_trace: &InferenceTraceContext,
+    ) -> Result<ResponseStream> {
+        let client_setup = self.client.current_client_setup().await?;
+        let transport = self
+            .client
+            .build_api_transport(&client_setup.api_provider, ANTHROPIC_MESSAGES_ENDPOINT)?;
+        let api_key = self
+            .client
+            .state
+            .provider
+            .info()
+            .api_key()?
+            .ok_or_else(|| {
+                CodexErr::UnsupportedOperation(
+                    "Anthropic Messages wire API requires an API key; set `env_key` or `api_key` for the provider in config.toml".to_string(),
+                )
+            })?;
+        let api_auth: SharedAuthProvider = Arc::new(StaticHeaderAuthProvider::new(
+            "x-api-key",
+            api_key,
+        ));
+        let request_auth_context = AuthRequestTelemetryContext::new(
+            client_setup.auth.as_ref().map(CodexAuth::auth_mode),
+            api_auth.as_ref(),
+            client_setup.agent_identity_telemetry.clone(),
+            PendingUnauthorizedRetry::default(),
+        );
+        let (request_telemetry, sse_telemetry) = Self::build_streaming_telemetry(
+            session_telemetry,
+            request_auth_context,
+            RequestRouteTelemetry::for_endpoint(ANTHROPIC_MESSAGES_ENDPOINT),
+            self.client.state.auth_env_telemetry.clone(),
+        );
+        let request =
+            crate::tools::adapters::anthropic::build_anthropic_request(prompt, &model_info.slug)?;
+        let client = AnthropicClient::new(
+            transport,
+            client_setup.api_provider,
+            api_auth,
+        )
+        .with_telemetry(Some(request_telemetry), Some(sse_telemetry));
+        let stream = client
+            .stream_request(request, AnthropicOptions::default())
+            .await
+            .map_err(|error| self.client.state.provider.map_api_error(error))?;
+        let tool_index = crate::tools::adapters::WireToolIndex::new(&prompt.tools);
+        let stream = stream.map(move |event| {
+            event.map(|event| crate::tools::adapters::normalize_response_event(event, &tool_index))
+        });
+        let (stream, _) = map_response_events(
+            None,
+            stream,
+            session_telemetry.clone(),
+            inference_trace.start_attempt(),
+            Arc::clone(&self.client.state.provider),
+        );
+        Ok(stream)
+    }
+
     /// Streams a turn via the Responses API over WebSocket transport.
     #[allow(clippy::too_many_arguments)]
     #[instrument(
@@ -1897,6 +2039,14 @@ impl ModelClientSession {
                     inference_trace,
                 )
                 .await
+            }
+            WireApi::Chat => {
+                self.stream_chat_api(prompt, model_info, session_telemetry, inference_trace)
+                    .await
+            }
+            WireApi::AnthropicMessages => {
+                self.stream_anthropic_api(prompt, model_info, session_telemetry, inference_trace)
+                    .await
             }
         }
     }

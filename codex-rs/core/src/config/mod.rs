@@ -590,6 +590,10 @@ pub struct Config {
     /// Info needed to make an API request to the model.
     pub model_provider: ModelProviderInfo,
 
+    /// Per-model display-name overrides from the `[models]` config table,
+    /// keyed by model id.
+    pub model_display_names: HashMap<String, String>,
+
     /// Optionally specify the personality of the model
     pub personality: Option<Personality>,
 
@@ -1549,6 +1553,7 @@ impl Config {
             personality_enabled: self.features.enabled(Feature::Personality),
             personality: self.personality,
             model_catalog: self.model_catalog.clone(),
+            model_display_names: self.model_display_names.clone(),
         }
     }
 
@@ -3973,6 +3978,21 @@ impl Config {
                 .unwrap_or_default(),
             model_provider_id,
             model_provider,
+            model_display_names: cfg
+                .models
+                .as_ref()
+                .map(|models| {
+                    models
+                        .iter()
+                        .filter_map(|(id, entry)| {
+                            entry
+                                .display_name
+                                .clone()
+                                .map(|display_name| (id.clone(), display_name))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default(),
             cwd: resolved_cwd,
             workspace_roots: workspace_roots.clone(),
             workspace_roots_explicit,

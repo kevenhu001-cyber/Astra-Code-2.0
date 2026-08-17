@@ -34,6 +34,7 @@ use codex_model_provider_info::AMAZON_BEDROCK_RUNTIME_PROVIDER_ID;
 use codex_model_provider_info::LEGACY_OLLAMA_CHAT_PROVIDER_ID;
 use codex_model_provider_info::LMSTUDIO_OSS_PROVIDER_ID;
 use codex_model_provider_info::ModelProviderInfo;
+use codex_model_provider_info::WireApi;
 use codex_model_provider_info::OLLAMA_CHAT_PROVIDER_REMOVED_ERROR;
 use codex_model_provider_info::OLLAMA_OSS_PROVIDER_ID;
 use codex_model_provider_info::OPENAI_PROVIDER_ID;
@@ -147,12 +148,24 @@ pub struct OrchestratorFeatureToml {
     pub enabled: Option<bool>,
 }
 
+/// Display metadata for a single model id in the `[models]` table.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq, JsonSchema)]
+#[schemars(deny_unknown_fields)]
+pub struct ModelDisplayEntry {
+    /// Friendly name shown in the TUI and status output.
+    pub display_name: Option<String>,
+    /// Wire protocol override used when this model is served by a
+    /// multi-protocol provider.
+    pub wire_api: Option<WireApi>,
+}
+
 /// Base config deserialized from ~/.codex/config.toml.
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, JsonSchema)]
 #[schemars(deny_unknown_fields)]
 pub struct ConfigToml {
     /// Optional override of model selection.
     pub model: Option<String>,
+
     /// Review model override used by the `/review` feature.
     pub review_model: Option<String>,
 
@@ -284,6 +297,12 @@ pub struct ConfigToml {
     /// IDs cannot be overridden.
     #[serde(default, deserialize_with = "deserialize_model_providers")]
     pub model_providers: HashMap<String, ModelProviderInfo>,
+
+    /// Optional per-model display overrides. Keys are model ids, values
+    /// describe how the model should be presented (and optionally which wire
+    /// protocol to use when the provider serves it).
+    #[serde(default)]
+    pub models: Option<HashMap<String, ModelDisplayEntry>>,
 
     /// Maximum total bytes of project instruction content across all selected environments.
     #[serde(default = "default_project_doc_max_bytes")]

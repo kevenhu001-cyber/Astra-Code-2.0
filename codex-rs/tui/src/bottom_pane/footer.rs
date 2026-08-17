@@ -150,7 +150,7 @@ impl CollaborationModeIndicator {
     fn styled_span(self, show_cycle_hint: bool) -> Span<'static> {
         let label = self.label(show_cycle_hint);
         match self {
-            CollaborationModeIndicator::Plan => Span::from(label).magenta(),
+            CollaborationModeIndicator::Plan => Span::from(label).fg(ratatui::style::Color::Rgb(255, 165, 0)),
         }
     }
 }
@@ -559,7 +559,7 @@ pub(crate) fn goal_status_indicator_line(
         }
     };
 
-    Some(Line::from(vec![Span::from(label).magenta()]))
+    Some(Line::from(vec![Span::from(label).fg(ratatui::style::Color::Rgb(255, 165, 0))]))
 }
 
 pub(crate) fn status_line_right_indicator_line(
@@ -591,10 +591,14 @@ pub(crate) fn status_line_right_indicator_line(
 }
 
 pub(crate) fn side_conversation_context_line(label: &str) -> Line<'static> {
+    let orange = ratatui::style::Color::Rgb(255, 165, 0);
     if let Some(rest) = label.strip_prefix("Side ") {
-        Line::from(vec!["Side".magenta().bold(), format!(" {rest}").magenta()])
+        Line::from(vec![
+            Span::from("Side").fg(orange).bold(),
+            format!(" {rest}").fg(orange),
+        ])
     } else {
-        Line::from(vec![Span::from(label.to_string()).magenta()])
+        Line::from(vec![Span::from(label.to_string()).fg(orange)])
     }
 }
 

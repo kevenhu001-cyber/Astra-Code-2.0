@@ -75,7 +75,7 @@ impl StatusLineAccent {
         match self {
             Self::Model | Self::State | Self::Metadata | Self::Mode => Style::default().cyan(),
             Self::Path | Self::Usage | Self::Progress => Style::default().green(),
-            Self::Branch | Self::Limit | Self::Thread => Style::default().magenta(),
+            Self::Branch | Self::Limit | Self::Thread => Style::default().fg(Color::Rgb(255, 165, 0)),
         }
     }
 }

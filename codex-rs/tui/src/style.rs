@@ -6,6 +6,7 @@ use crate::terminal_palette::default_bg;
 use crate::terminal_palette::default_fg;
 use crate::terminal_palette::rgb_color;
 use crate::terminal_palette::stdout_color_level;
+use crate::theme;
 use ratatui::style::Color;
 use ratatui::style::Style;
 
@@ -27,8 +28,9 @@ pub(crate) fn table_separator_style() -> Style {
 }
 
 /// Returns the shared accent style for active or selected TUI controls.
+/// Delegates to `theme::accent_style` so the Astra brand color lives in one place.
 pub(crate) fn accent_style() -> Style {
-    accent_style_for(default_bg())
+    theme::accent_style()
 }
 
 /// Returns the style for a user-authored message using the provided terminal background.
@@ -48,11 +50,7 @@ pub fn proposed_plan_style_for(terminal_bg: Option<(u8, u8, u8)>) -> Style {
 
 /// Returns the shared accent style for the provided terminal background.
 pub(crate) fn accent_style_for(terminal_bg: Option<(u8, u8, u8)>) -> Style {
-    if terminal_bg.is_some_and(is_light) {
-        Style::default().fg(best_color(LIGHT_BG_ACCENT_RGB)).bold()
-    } else {
-        Style::default().fg(Color::Cyan).bold()
-    }
+    theme::accent_style_for(terminal_bg)
 }
 
 fn table_separator_style_for(
@@ -97,16 +95,21 @@ mod tests {
     use ratatui::style::Modifier;
 
     #[test]
-    fn accent_style_uses_darker_cyan_on_light_backgrounds() {
+    fn accent_style_uses_darker_orange_on_light_backgrounds() {
         let style = accent_style_for(Some((255, 255, 255)));
 
-        assert_eq!(style.fg, Some(best_color(LIGHT_BG_ACCENT_RGB)));
+        assert_eq!(
+            style.fg,
+            Some(best_color(crate::theme::ACCENT_ORANGE_LIGHT_BG_RGB))
+        );
         assert!(style.add_modifier.contains(Modifier::BOLD));
     }
 
     #[test]
-    fn accent_style_uses_cyan_on_dark_or_unknown_backgrounds() {
-        let expected = Style::default().fg(Color::Cyan).bold();
+    fn accent_style_uses_orange_on_dark_or_unknown_backgrounds() {
+        let expected = Style::default()
+            .fg(rgb_color(crate::theme::ACCENT_ORANGE_RGB))
+            .bold();
 
         assert_eq!(accent_style_for(Some((0, 0, 0))), expected);
         assert_eq!(accent_style_for(/*terminal_bg*/ None), expected);

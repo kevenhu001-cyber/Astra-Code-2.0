@@ -185,7 +185,7 @@ fn primary_spans(row: &SearchResult, base_style: Style) -> Vec<Span<'static>> {
 
     let mut spans = Vec::with_capacity(row.display_name.len());
     let name_style = match row.mention_type {
-        MentionType::Plugin => base_style.magenta(),
+        MentionType::Plugin => base_style.fg(ratatui::style::Color::Rgb(255, 165, 0)),
         MentionType::Skill => base_style.dim(),
         MentionType::File | MentionType::Directory => base_style,
     };

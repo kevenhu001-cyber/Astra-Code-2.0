@@ -1,6 +1,7 @@
 use codex_client::Request;
 use codex_client::TransportError;
 use http::HeaderMap;
+use http::HeaderValue;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -78,6 +79,31 @@ pub type AuthHeadersFuture<'a> =
 
 /// Shared auth handle passed through API clients.
 pub type SharedAuthProvider = Arc<dyn AuthProvider>;
+
+/// Static header-based auth, used by protocols that carry the key in a
+/// custom header (e.g. Anthropic's `x-api-key`) rather than `Authorization`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StaticHeaderAuthProvider {
+    pub(crate) name: &'static str,
+    pub(crate) value: String,
+}
+
+impl StaticHeaderAuthProvider {
+    pub fn new(name: &'static str, value: impl Into<String>) -> Self {
+        Self {
+            name,
+            value: value.into(),
+        }
+    }
+}
+
+impl AuthProvider for StaticHeaderAuthProvider {
+    fn add_auth_headers(&self, headers: &mut HeaderMap) {
+        if let Ok(value) = HeaderValue::from_str(&self.value) {
+            headers.insert(self.name, value);
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AgentIdentityTelemetry {

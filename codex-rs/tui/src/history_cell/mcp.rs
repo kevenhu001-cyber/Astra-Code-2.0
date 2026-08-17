@@ -401,7 +401,7 @@ pub(crate) fn empty_mcp_output() -> WebHyperlinkHistoryCell {
     docs_line.push_span(" to configure them.".into(), /*destination*/ None);
 
     let lines = vec![
-        HyperlinkLine::new("/mcp".magenta().into()),
+        HyperlinkLine::new("/mcp".fg(ratatui::style::Color::Rgb(255, 165, 0)).into()),
         HyperlinkLine::from(""),
         HyperlinkLine::new(vec!["🔌  ".into(), "MCP Tools".bold()].into()),
         HyperlinkLine::from(""),
@@ -422,7 +422,7 @@ pub(crate) fn new_mcp_tools_output(
     auth_statuses: &HashMap<String, McpAuthStatus>,
 ) -> PlainHistoryCell {
     let mut lines: Vec<Line<'static>> = vec![
-        "/mcp".magenta().into(),
+        "/mcp".fg(ratatui::style::Color::Rgb(255, 165, 0)).into(),
         "".into(),
         vec!["🔌  ".into(), "MCP Tools".bold()].into(),
         "".into(),
@@ -600,7 +600,7 @@ pub(crate) fn new_mcp_tools_output_from_statuses(
     detail: McpServerStatusDetail,
 ) -> PlainHistoryCell {
     let mut lines: Vec<Line<'static>> = vec![
-        "/mcp".magenta().into(),
+        "/mcp".fg(ratatui::style::Color::Rgb(255, 165, 0)).into(),
         "".into(),
         vec!["🔌  ".into(), "MCP Tools".bold()].into(),
         "".into(),

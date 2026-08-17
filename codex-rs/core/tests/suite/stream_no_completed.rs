@@ -53,6 +53,9 @@ async fn retries_on_early_close() {
         // provider is not set.
         env_key: Some("PATH".into()),
         env_key_instructions: None,
+        api_key: None,
+        model_display_name: None,
+        models: None,
         experimental_bearer_token: None,
         auth: None,
         aws: None,

@@ -205,7 +205,7 @@ impl HistoryCell for ExecCell {
             let cmd_display = adaptive_wrap_lines(
                 &highlighted_script,
                 RtOptions::new(width as usize)
-                    .initial_indent("$ ".magenta().into())
+                    .initial_indent("$ ".fg(ratatui::style::Color::Rgb(255, 165, 0)).into())
                     .subsequent_indent("    ".into()),
             );
             lines.extend(cmd_display);

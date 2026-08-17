@@ -190,7 +190,7 @@ pub(crate) fn new_session_info(
         }
         if requested_model != session.model.as_str() {
             let lines = vec![
-                "model changed:".magenta().bold().into(),
+                "model changed:".fg(ratatui::style::Color::Rgb(255, 165, 0)).bold().into(),
                 format!("requested: {requested_model}").into(),
                 format!("used: {}", session.model).into(),
             ];
@@ -352,7 +352,7 @@ impl HistoryCell for SessionHeaderHistoryCell {
             }
             if self.show_fast_status {
                 spans.push("   ".into());
-                spans.push(Span::styled("fast", self.model_style.magenta()));
+                spans.push(Span::styled("fast", self.model_style.fg(ratatui::style::Color::Rgb(255, 165, 0))));
             }
             spans.push("   ".dim());
             spans.push(CHANGE_MODEL_HINT_COMMAND.cyan());
@@ -378,7 +378,7 @@ impl HistoryCell for SessionHeaderHistoryCell {
             let permissions_label = format!("{PERMISSIONS_LABEL:<label_width$}");
             lines.push(make_row(vec![
                 Span::from(format!("{permissions_label} ")).dim(),
-                "YOLO mode".magenta().bold(),
+                "YOLO mode".fg(ratatui::style::Color::Rgb(255, 165, 0)).bold(),
             ]));
         }
 

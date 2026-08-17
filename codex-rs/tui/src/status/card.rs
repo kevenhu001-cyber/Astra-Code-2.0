@@ -231,7 +231,7 @@ pub(crate) fn new_status_output_with_rate_limits_handle(
     agents_summary: String,
     refreshing_rate_limits: bool,
 ) -> (CompositeHistoryCell, StatusHistoryHandle) {
-    let command = PlainHistoryCell::new(vec!["/status".magenta().into()]);
+    let command = PlainHistoryCell::new(vec!["/status".fg(ratatui::style::Color::Rgb(255, 165, 0)).into()]);
     let (card, handle) = StatusHistoryCell::new(
         config,
         runtime_model_provider_base_url,

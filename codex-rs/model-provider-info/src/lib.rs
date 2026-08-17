@@ -51,7 +51,8 @@ pub const AMAZON_BEDROCK_DEFAULT_BASE_URL: &str =
     "https://bedrock-mantle.us-east-1.api.aws/openai/v1";
 const AMAZON_BEDROCK_MANTLE_CLIENT_AGENT_HEADER: &str = "x-amzn-mantle-client-agent";
 const AMAZON_BEDROCK_MANTLE_CLIENT_AGENT_VALUE: &str = "codex";
-const CHAT_WIRE_API_REMOVED_ERROR: &str = "`wire_api = \"chat\"` is no longer supported.\nHow to fix: set `wire_api = \"responses\"` in your provider config.\nMore info: https://github.com/openai/codex/discussions/7782";
+const CHAT_WIRE_API_DOCS_NOTE: &str =
+    "`wire_api = \"chat\"` selects the OpenAI Chat Completions protocol (`/v1/chat/completions`).";
 pub const LEGACY_OLLAMA_CHAT_PROVIDER_ID: &str = "ollama-chat";
 pub const OLLAMA_CHAT_PROVIDER_REMOVED_ERROR: &str = "`ollama-chat` is no longer supported.\nHow to fix: replace `ollama-chat` with `ollama` in `model_provider`, `oss_provider`, or `--local-provider`.\nMore info: https://github.com/openai/codex/discussions/7782";
 
@@ -62,12 +63,20 @@ pub enum WireApi {
     /// The Responses API exposed by OpenAI at `/v1/responses`.
     #[default]
     Responses,
+    /// OpenAI Chat Completions API (`/v1/chat/completions`). Use this when
+    /// talking to a backend that does not yet implement the Responses API.
+    Chat,
+    /// Anthropic Messages API (`/v1/messages`). Use this when targeting a
+    /// Claude backend.
+    AnthropicMessages,
 }
 
 impl fmt::Display for WireApi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let value = match self {
             Self::Responses => "responses",
+            Self::Chat => "chat",
+            Self::AnthropicMessages => "anthropic_messages",
         };
         f.write_str(value)
     }
@@ -80,9 +89,13 @@ impl<'de> Deserialize<'de> for WireApi {
     {
         let value = String::deserialize(deserializer)?;
         match value.as_str() {
-            "responses" => Ok(Self::Responses),
-            "chat" => Err(serde::de::Error::custom(CHAT_WIRE_API_REMOVED_ERROR)),
-            _ => Err(serde::de::Error::unknown_variant(&value, &["responses"])),
+            "responses" | "responses_api" => Ok(Self::Responses),
+            "chat" | "chat_completions" => Ok(Self::Chat),
+            "anthropic" | "anthropic_messages" | "messages" => Ok(Self::AnthropicMessages),
+            other => Err(serde::de::Error::unknown_variant(
+                &other,
+                &["responses", "chat", "anthropic_messages"],
+            )),
         }
     }
 }
@@ -94,7 +107,8 @@ pub struct ModelProviderInfo {
     /// Friendly display name.
     #[serde(default)]
     pub name: String,
-    /// Base URL for the provider's OpenAI-compatible API.
+    /// Base URL for the provider's API. The path that gets appended is chosen
+    /// by `wire_api` (`responses`, `chat/completions`, or `messages`).
     pub base_url: Option<String>,
     /// Environment variable that stores the user's API key for this provider.
     pub env_key: Option<String>,
@@ -102,6 +116,11 @@ pub struct ModelProviderInfo {
     /// Optional instructions to help the user get a valid value for the
     /// variable and set it.
     pub env_key_instructions: Option<String>,
+    /// Inline API key (used as a bearer token). Lower priority than `env_key`
+    /// but higher priority than the OAuth/Codex auth flow. Use only when
+    /// `env_key` is inconvenient — leaving the key in plaintext on disk is a
+    /// security tradeoff.
+    pub api_key: Option<String>,
     /// Value to use with `Authorization: Bearer <token>` header. Use of this
     /// config is discouraged in favor of `env_key` for security reasons, but
     /// this may be necessary when using this programmatically.
@@ -113,6 +132,15 @@ pub struct ModelProviderInfo {
     /// Which wire protocol this provider expects.
     #[serde(default)]
     pub wire_api: WireApi,
+    /// Default display name to use for any model served by this provider when
+    /// the per-model lookup in `ConfigToml.models` does not match. The runtime
+    /// model info's `display_name` takes precedence when present.
+    pub model_display_name: Option<String>,
+    /// Optional per-model override list. Each entry maps a model id to a
+    /// display name (and optionally a `wire_api`) so the user can rename a
+    /// generic slug like `claude-3-5-sonnet-latest` to something friendlier
+    /// in their `config.toml`.
+    pub models: Option<Vec<ModelEntry>>,
     /// Optional query parameters to append to the base URL.
     pub query_params: Option<HashMap<String, String>>,
     /// Additional HTTP headers to include in requests to this provider where
@@ -145,6 +173,20 @@ pub struct ModelProviderInfo {
     /// Whether this provider supports the standalone web-search endpoint.
     #[serde(default)]
     pub supports_standalone_web_search: bool,
+}
+
+/// Per-model override entry used by `ModelProviderInfo::models`.
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq, Eq, JsonSchema)]
+#[schemars(deny_unknown_fields)]
+pub struct ModelEntry {
+    /// Model id as exposed by the provider (for example
+    /// `claude-3-5-sonnet-latest`).
+    pub id: String,
+    /// User-facing display name shown in pickers and `/status`.
+    pub display_name: Option<String>,
+    /// Optional wire-protocol override. Useful when a single provider endpoint
+    /// exposes both Chat and Responses compatible models.
+    pub wire_api: Option<WireApi>,
 }
 
 /// AWS SigV4 auth configuration for a model provider.
@@ -286,7 +328,8 @@ impl ModelProviderInfo {
 
     /// If `env_key` is Some, returns the API key for this provider if present
     /// (and non-empty) in the environment. If `env_key` is required but
-    /// cannot be found, returns an error.
+    /// cannot be found, returns an error. When `env_key` is unset, falls back
+    /// to the inline `api_key` field.
     pub fn api_key(&self) -> CodexResult<Option<String>> {
         match &self.env_key {
             Some(env_key) => {
@@ -301,7 +344,7 @@ impl ModelProviderInfo {
                     })?;
                 Ok(Some(api_key))
             }
-            None => Ok(None),
+            None => Ok(self.api_key.clone().filter(|v| !v.trim().is_empty())),
         }
     }
 
@@ -339,10 +382,13 @@ impl ModelProviderInfo {
             base_url,
             env_key: None,
             env_key_instructions: None,
+            api_key: None,
             experimental_bearer_token: None,
             auth: None,
             aws: None,
             wire_api: WireApi::Responses,
+            model_display_name: None,
+            models: None,
             query_params: None,
             http_headers: Some(
                 [("version".to_string(), env!("CARGO_PKG_VERSION").to_string())]
@@ -382,6 +428,7 @@ impl ModelProviderInfo {
             base_url: None,
             env_key: None,
             env_key_instructions: None,
+            api_key: None,
             experimental_bearer_token: None,
             auth: None,
             aws: Some(aws.unwrap_or(ModelProviderAwsAuthInfo {
@@ -389,6 +436,8 @@ impl ModelProviderInfo {
                 region: None,
             })),
             wire_api: WireApi::Responses,
+            model_display_name: None,
+            models: None,
             query_params: None,
             http_headers: Some(HashMap::from([(
                 AMAZON_BEDROCK_MANTLE_CLIENT_AGENT_HEADER.to_string(),
@@ -555,10 +604,13 @@ pub fn create_oss_provider_with_base_url(base_url: &str, wire_api: WireApi) -> M
         base_url: Some(base_url.into()),
         env_key: None,
         env_key_instructions: None,
+        api_key: None,
         experimental_bearer_token: None,
         auth: None,
         aws: None,
         wire_api,
+        model_display_name: None,
+        models: None,
         query_params: None,
         http_headers: None,
         env_http_headers: None,

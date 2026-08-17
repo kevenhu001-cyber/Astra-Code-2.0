@@ -159,6 +159,8 @@ fn model_provider_from_proto(
     let id = provider.id;
     let wire_api = match proto::WireApi::try_from(provider.wire_api) {
         Ok(proto::WireApi::Responses) => WireApi::Responses,
+        Ok(proto::WireApi::Chat) => WireApi::Chat,
+        Ok(proto::WireApi::AnthropicMessages) => WireApi::AnthropicMessages,
         Ok(proto::WireApi::Unspecified) => {
             return Err(parse_error("remote thread config omitted wire_api"));
         }
@@ -174,6 +176,7 @@ fn model_provider_from_proto(
         base_url: provider.base_url,
         env_key: provider.env_key,
         env_key_instructions: provider.env_key_instructions,
+        api_key: provider.api_key,
         experimental_bearer_token: provider.experimental_bearer_token,
         auth: provider
             .auth
@@ -181,6 +184,8 @@ fn model_provider_from_proto(
             .transpose()?,
         aws: None,
         wire_api,
+        model_display_name: provider.model_display_name,
+        models: None,
         query_params: provider.query_params.map(|map| map.values),
         http_headers: provider.http_headers.map(|map| map.values),
         env_http_headers: provider.env_http_headers.map(|map| map.values),
@@ -205,9 +210,12 @@ fn model_provider_to_proto(
         base_url,
         env_key,
         env_key_instructions,
+        api_key,
+        model_display_name,
         experimental_bearer_token,
         auth,
         aws: _,
+        models: _,
         wire_api,
         query_params,
         http_headers,
@@ -227,6 +235,8 @@ fn model_provider_to_proto(
         base_url,
         env_key,
         env_key_instructions,
+        api_key,
+        model_display_name,
         experimental_bearer_token,
         auth: auth.map(model_provider_auth_to_proto),
         wire_api: proto_wire_api(wire_api).into(),
@@ -292,6 +302,8 @@ fn proto_string_map(values: HashMap<String, String>) -> proto::StringMap {
 fn proto_wire_api(wire_api: WireApi) -> proto::WireApi {
     match wire_api {
         WireApi::Responses => proto::WireApi::Responses,
+        WireApi::Chat => proto::WireApi::Chat,
+        WireApi::AnthropicMessages => proto::WireApi::AnthropicMessages,
     }
 }
 
@@ -458,6 +470,8 @@ mod tests {
                             base_url: Some("http://127.0.0.1:8061/api/codex".to_string()),
                             env_key: None,
                             env_key_instructions: None,
+                            api_key: None,
+                            model_display_name: None,
                             experimental_bearer_token: None,
                             auth: Some(proto::ModelProviderAuthInfo {
                                 command: "token-helper".to_string(),
@@ -528,6 +542,8 @@ mod tests {
             base_url: Some("http://127.0.0.1:8061/api/codex".to_string()),
             env_key: None,
             env_key_instructions: None,
+            api_key: None,
+            model_display_name: None,
             experimental_bearer_token: None,
             auth: Some(ModelProviderAuthInfo {
                 command: "token-helper".to_string(),
@@ -557,6 +573,7 @@ mod tests {
             supports_websockets: true,
             supports_standalone_web_search: true,
             aws: None,
+            models: None,
         }
     }
 

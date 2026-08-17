@@ -271,7 +271,7 @@ impl App {
                     self.chat_widget.rollout_path().as_deref(),
                 );
                 self.chat_widget
-                    .add_plain_history_lines(vec!["/fork".magenta().into()]);
+                    .add_plain_history_lines(vec!["/fork".fg(ratatui::style::Color::Rgb(255, 165, 0)).into()]);
                 if let Some(thread_id) = self.chat_widget.thread_id() {
                     self.refresh_in_memory_config_from_disk_best_effort("forking the thread")
                         .await;

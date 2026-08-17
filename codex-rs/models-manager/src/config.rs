@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use codex_protocol::config_types::Personality;
 use codex_protocol::openai_models::ModelsResponse;
 
@@ -10,4 +12,6 @@ pub struct ModelsManagerConfig {
     pub personality_enabled: bool,
     pub personality: Option<Personality>,
     pub model_catalog: Option<ModelsResponse>,
+    /// Display-name overrides keyed by model id, from the `[models]` table.
+    pub model_display_names: HashMap<String, String>,
 }

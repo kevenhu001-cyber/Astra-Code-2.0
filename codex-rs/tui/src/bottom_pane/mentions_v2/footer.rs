@@ -69,7 +69,7 @@ fn search_mode_indicator_line(active_search_mode: SearchMode) -> Line<'static> {
             let label = format!("[{}]", search_mode.label());
             let span = match search_mode {
                 SearchMode::Results | SearchMode::FilesystemOnly => label.cyan().bold(),
-                SearchMode::Tools => label.magenta().bold(),
+                SearchMode::Tools => label.fg(ratatui::style::Color::Rgb(255, 165, 0)).bold(),
             };
             spans.push(span);
         } else {

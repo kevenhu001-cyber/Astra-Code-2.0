@@ -561,7 +561,7 @@ const FOOTER_SPACING_HEIGHT: u16 = 0;
 /// Builds the one-line nudge that replaces the ambient footer without adding layout height.
 fn plan_mode_nudge_line() -> Line<'static> {
     Line::from(vec![
-        "Create a plan?".magenta(),
+        "Create a plan?".fg(ratatui::style::Color::Rgb(255, 165, 0)),
         "  ".into(),
         key_hint::shift(KeyCode::Tab).into(),
         " use Plan mode".into(),
@@ -1368,7 +1368,7 @@ impl ChatComposer {
             .textarea
             .vim_mode_label()
             .map(|label| match label {
-                "Normal" => "Vim: Normal".magenta(),
+                "Normal" => "Vim: Normal".fg(ratatui::style::Color::Rgb(255, 165, 0)),
                 "Insert" => "Vim: Insert".green(),
                 _ => unreachable!(),
             })
@@ -5937,7 +5937,7 @@ mod tests {
         assert!(composer.is_empty());
         assert_eq!(
             composer.vim_mode_indicator_span(),
-            Some("Vim: Normal".magenta())
+            Some("Vim: Normal".fg(ratatui::style::Color::Rgb(255, 165, 0)))
         );
         assert_eq!(composer.footer.mode, FooterMode::ComposerEmpty);
         assert!(!composer.footer.esc_backtrack_hint);
@@ -6004,7 +6004,7 @@ mod tests {
         assert!(composer.is_empty());
         assert_eq!(
             composer.vim_mode_indicator_span(),
-            Some("Vim: Normal".magenta())
+            Some("Vim: Normal".fg(ratatui::style::Color::Rgb(255, 165, 0)))
         );
         assert!(matches!(result, InputResult::Command(SlashCommand::Diff)));
     }
@@ -6036,7 +6036,7 @@ mod tests {
         assert!(needs_redraw);
         assert_eq!(
             composer.vim_mode_indicator_span(),
-            Some("Vim: Normal".magenta())
+            Some("Vim: Normal".fg(ratatui::style::Color::Rgb(255, 165, 0)))
         );
         match result {
             InputResult::CommandWithArgs(cmd, args, text_elements) => {
@@ -6276,7 +6276,7 @@ mod tests {
         assert!(composer.draft.textarea.is_vim_enabled());
         assert_eq!(
             composer.vim_mode_indicator_span(),
-            Some("Vim: Normal".magenta())
+            Some("Vim: Normal".fg(ratatui::style::Color::Rgb(255, 165, 0)))
         );
 
         composer.handle_key_event(KeyEvent::new(KeyCode::Char('i'), KeyModifiers::NONE));
@@ -6287,7 +6287,7 @@ mod tests {
         assert!(composer.draft.textarea.is_vim_enabled());
         assert_eq!(
             composer.vim_mode_indicator_span(),
-            Some("Vim: Normal".magenta())
+            Some("Vim: Normal".fg(ratatui::style::Color::Rgb(255, 165, 0)))
         );
         assert!(composer.is_empty());
         match result {
@@ -6321,7 +6321,7 @@ mod tests {
 
         assert_eq!(
             composer.vim_mode_indicator_span(),
-            Some("Vim: Normal".magenta())
+            Some("Vim: Normal".fg(ratatui::style::Color::Rgb(255, 165, 0)))
         );
         assert!(composer.is_empty());
         match result {
@@ -6393,7 +6393,7 @@ mod tests {
         composer.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
         assert_eq!(
             composer.vim_mode_indicator_span(),
-            Some("Vim: Normal".magenta())
+            Some("Vim: Normal".fg(ratatui::style::Color::Rgb(255, 165, 0)))
         );
         assert_eq!(composer.draft.textarea.cursor(), "he".len());
     }
@@ -11203,7 +11203,7 @@ mod tests {
         assert_eq!(composer.draft.textarea.text(), "hello");
         assert_eq!(
             composer.vim_mode_indicator_span(),
-            Some("Vim: Normal".magenta())
+            Some("Vim: Normal".fg(ratatui::style::Color::Rgb(255, 165, 0)))
         );
         assert!(!composer.draft.textarea.is_vim_operator_pending());
     }

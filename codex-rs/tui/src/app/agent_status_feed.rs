@@ -32,7 +32,7 @@ impl AgentStatusHistoryCell {
 impl HistoryCell for AgentStatusHistoryCell {
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
         let mut lines: Vec<Line<'static>> = vec![
-            "/agent".magenta().into(),
+            "/agent".fg(ratatui::style::Color::Rgb(255, 165, 0)).into(),
             "Sub-agents running".bold().into(),
             "".into(),
         ];

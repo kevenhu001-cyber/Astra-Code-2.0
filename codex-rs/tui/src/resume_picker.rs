@@ -2204,7 +2204,7 @@ fn toolbar_value(label: &'static str, active: bool, focused: bool) -> Span<'stat
     if active {
         let value = format!("[{label}]");
         if focused {
-            value.magenta()
+            value.fg(ratatui::style::Color::Rgb(255, 165, 0))
         } else {
             value.into()
         }

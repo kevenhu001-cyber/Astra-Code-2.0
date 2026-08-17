@@ -237,7 +237,7 @@ impl HistoryCell for UnifiedExecProcessesCell {
 pub(crate) fn new_unified_exec_processes_output(
     processes: Vec<UnifiedExecProcessDetails>,
 ) -> CompositeHistoryCell {
-    let command = PlainHistoryCell::new(vec!["/ps".magenta().into()]);
+    let command = PlainHistoryCell::new(vec!["/ps".fg(ratatui::style::Color::Rgb(255, 165, 0)).into()]);
     let summary = UnifiedExecProcessesCell::new(processes);
     CompositeHistoryCell::new(vec![Box::new(command), Box::new(summary)])
 }

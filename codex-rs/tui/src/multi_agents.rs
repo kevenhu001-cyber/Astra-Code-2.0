@@ -544,7 +544,7 @@ fn spawn_request_spans(spawn_request: Option<&SpawnRequestSummary>) -> Vec<Span<
         format!("({model} {})", spawn_request.reasoning_effort)
     };
 
-    vec![Span::from(" ").dim(), Span::from(details).magenta()]
+    vec![Span::from(" ").dim(), Span::from(details).fg(ratatui::style::Color::Rgb(255, 165, 0))]
 }
 
 fn prompt_line(prompt: &str) -> Option<Line<'static>> {

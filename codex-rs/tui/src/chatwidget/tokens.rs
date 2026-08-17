@@ -107,7 +107,7 @@ pub(super) fn new_token_activity_output(
 ) -> (CompositeHistoryCell, TokenActivityHandle) {
     let command = PlainHistoryCell::new(vec![
         format!("/usage {}", view.label().to_lowercase())
-            .magenta()
+            .fg(ratatui::style::Color::Rgb(255, 165, 0))
             .into(),
     ]);
     let state = Arc::new(RwLock::new(TokenActivityState::Loading));

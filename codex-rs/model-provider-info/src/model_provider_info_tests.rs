@@ -16,10 +16,13 @@ base_url = "http://localhost:11434/v1"
         base_url: Some("http://localhost:11434/v1".into()),
         env_key: None,
         env_key_instructions: None,
+        api_key: None,
         experimental_bearer_token: None,
         auth: None,
         aws: None,
         wire_api: WireApi::Responses,
+        model_display_name: None,
+        models: None,
         query_params: None,
         http_headers: None,
         env_http_headers: None,
@@ -49,10 +52,13 @@ query_params = { api-version = "2025-04-01-preview" }
         base_url: Some("https://xxxxx.openai.azure.com/openai".into()),
         env_key: Some("AZURE_OPENAI_API_KEY".into()),
         env_key_instructions: None,
+        api_key: None,
         experimental_bearer_token: None,
         auth: None,
         aws: None,
         wire_api: WireApi::Responses,
+        model_display_name: None,
+        models: None,
         query_params: Some(maplit::hashmap! {
             "api-version".to_string() => "2025-04-01-preview".to_string(),
         }),
@@ -86,10 +92,13 @@ supports_standalone_web_search = true
         base_url: Some("https://example.com".into()),
         env_key: Some("API_KEY".into()),
         env_key_instructions: None,
+        api_key: None,
         experimental_bearer_token: None,
         auth: None,
         aws: None,
         wire_api: WireApi::Responses,
+        model_display_name: None,
+        models: None,
         query_params: None,
         http_headers: Some(maplit::hashmap! {
             "X-Example-Header".to_string() => "example-value".to_string(),
@@ -111,16 +120,38 @@ supports_standalone_web_search = true
 }
 
 #[test]
-fn test_deserialize_chat_wire_api_shows_helpful_error() {
+fn test_deserialize_chat_wire_api_is_supported() {
     let provider_toml = r#"
-name = "OpenAI using Chat Completions"
+name = "OpenAI Chat"
 base_url = "https://api.openai.com/v1"
 env_key = "OPENAI_API_KEY"
 wire_api = "chat"
         "#;
+    let provider: ModelProviderInfo = toml::from_str(provider_toml).unwrap();
+    assert_eq!(provider.wire_api, WireApi::Chat);
+}
 
+#[test]
+fn test_deserialize_anthropic_wire_api_is_supported() {
+    let provider_toml = r#"
+name = "Anthropic"
+base_url = "https://api.anthropic.com"
+env_key = "ANTHROPIC_API_KEY"
+wire_api = "anthropic_messages"
+        "#;
+    let provider: ModelProviderInfo = toml::from_str(provider_toml).unwrap();
+    assert_eq!(provider.wire_api, WireApi::AnthropicMessages);
+}
+
+#[test]
+fn test_deserialize_unknown_wire_api_still_errors() {
+    let provider_toml = r#"
+name = "Bogus"
+base_url = "https://example.com"
+wire_api = "gibberish"
+        "#;
     let err = toml::from_str::<ModelProviderInfo>(provider_toml).unwrap_err();
-    assert!(err.to_string().contains(CHAT_WIRE_API_REMOVED_ERROR));
+    assert!(err.to_string().contains("gibberish"));
 }
 
 #[test]
