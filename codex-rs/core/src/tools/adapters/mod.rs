@@ -14,7 +14,7 @@ pub(crate) mod chat;
 
 use codex_api::ResponseEvent;
 use codex_protocol::models::ResponseItem;
-use codex_protocol::tool_name::DEFAULT_FUNCTION_NAMESPACE;
+use codex_protocol::DEFAULT_FUNCTION_NAMESPACE;
 use codex_tools::ResponsesApiNamespaceTool;
 use codex_tools::ToolSpec;
 use std::collections::HashMap;

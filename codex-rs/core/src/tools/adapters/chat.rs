@@ -219,7 +219,7 @@ fn chat_tools(tools: &[ToolSpec]) -> Result<Vec<ChatTool>, serde_json::Error> {
                         ),
                     };
                     let entry = WireToolEntry {
-                        namespace: (namespace_name != codex_protocol::tool_name::DEFAULT_FUNCTION_NAMESPACE)
+                        namespace: (namespace_name != codex_protocol::DEFAULT_FUNCTION_NAMESPACE)
                             .then(|| namespace_name.clone()),
                         name,
                         freeform,
